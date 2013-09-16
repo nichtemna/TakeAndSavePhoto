@@ -6,5 +6,8 @@
     <string name="take_photo">Take photo</string>
     <string name="camera">Camera</string>
     <string name="remove">Remove</string>
-
+      <string name="close">Close</string>
+    <string name="switch_camera">Switch camera</string>
+    <string name="camera_alert">Device has only one camera!</string>
+<string name="no_photos">No photos in this folder</string>
 </resources>

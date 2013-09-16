@@ -4,6 +4,13 @@
     android:layout_height="match_parent"
     android:orientation="vertical" >
 
+    <TextView
+        android:id="@+id/frag_photo_tv_nophotos"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="@string/no_photos" />
+
     <ImageView
         android:id="@+id/frag_photo_iv"
         android:layout_width="match_parent"
@@ -29,6 +36,28 @@
             android:src="@drawable/ic_remove" />
 
         <ImageButton
+            android:id="@+id/frag_photo_imb_right"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="25dip"
+            android:layout_toLeftOf="@+id/frag_photo_imb_remove_photo"
+            android:background="@drawable/button_main_selector"
+            android:padding="5dip"
+            android:src="@drawable/ic_right" />
+
+        <ImageButton
+            android:id="@+id/frag_photo_imb_left"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="25dip"
+            android:layout_toRightOf="@+id/frag_photo_imb_camera"
+            android:background="@drawable/button_main_selector"
+            android:padding="5dip"
+            android:src="@drawable/ic_left" />
+
+        <ImageButton
             android:id="@+id/frag_photo_imb_camera"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -36,7 +65,7 @@
             android:layout_centerVertical="true"
             android:background="@drawable/button_main_selector"
             android:padding="5dip"
-            android:src="@drawable/ic_camera" />
+            android:src="@drawable/ic_switch_camera" />
     </RelativeLayout>
 
 </RelativeLayout>

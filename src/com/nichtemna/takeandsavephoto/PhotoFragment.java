@@ -18,11 +18,17 @@ import android.widget.ImageView;
 import com.nichtemna.takeandsavephoto.PhotoActivity.TransactionType;
 
 public class PhotoFragment extends Fragment implements OnClickListener {
-	private final static int PERIOD = 3000;
+	public enum ImageSetMode {
+		LAST, LEFT, RIGHT, POSITION
+	}
 
-	private ImageButton imb_remove, imb_camera;
+	private final static int PERIOD = 2000;
+	private final static int TICK = 1000;
+
+	private ImageButton imb_remove, imb_camera, imb_left, imb_right;
 	private ImageView iv_photo;
-	private File currentFile;
+	private int currentFilePosition = 0;
+	private File[] files;
 
 	public static PhotoFragment newInstance(TransactionType type) {
 		PhotoFragment frag = new PhotoFragment();
@@ -42,22 +48,35 @@ public class PhotoFragment extends Fragment implements OnClickListener {
 
 	@Override
 	public void onActivityCreated(Bundle savedInstanceState) {
-		setImagePreview();
+		getFileList();
+		managePreview(ImageSetMode.LAST);
 		if (getTransactionType().equals(TransactionType.TEMPRORAILY)) {
 			cameraCountDownTimer.start();
 		}
 		super.onActivityCreated(savedInstanceState);
 	}
 
+	/**
+	 * Gets list of files in this folder
+	 */
+	private void getFileList() {
+		File root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + "/" + getString(R.string.app_name));
+		files = root.listFiles();
+	}
+
 	private void initViews(View view) {
 		imb_remove = (ImageButton) view.findViewById(R.id.frag_photo_imb_remove_photo);
 		imb_camera = (ImageButton) view.findViewById(R.id.frag_photo_imb_camera);
+		imb_left = (ImageButton) view.findViewById(R.id.frag_photo_imb_left);
+		imb_right = (ImageButton) view.findViewById(R.id.frag_photo_imb_right);
 		iv_photo = (ImageView) view.findViewById(R.id.frag_photo_iv);
 	}
 
 	private void setListeners() {
 		imb_remove.setOnClickListener(this);
 		imb_camera.setOnClickListener(this);
+		imb_left.setOnClickListener(this);
+		imb_right.setOnClickListener(this);
 	}
 
 	@Override
@@ -66,12 +85,23 @@ public class PhotoFragment extends Fragment implements OnClickListener {
 		case R.id.frag_photo_imb_remove_photo:
 			removeCurrentImage();
 			break;
+
 		case R.id.frag_photo_imb_camera:
 			goToCameraFragment();
 			break;
+
+		case R.id.frag_photo_imb_left:
+			managePreview(ImageSetMode.LEFT);
+			break;
+
+		case R.id.frag_photo_imb_right:
+			managePreview(ImageSetMode.RIGHT);
+			break;
+
 		default:
 			break;
 		}
+		cameraCountDownTimer.cancel();
 	}
 
 	/**
@@ -87,8 +117,19 @@ public class PhotoFragment extends Fragment implements OnClickListener {
 	 * Deletes current image form storage
 	 */
 	private void removeCurrentImage() {
-		if (currentFile != null) {
-			currentFile.delete();
+		if (files.length > 0 && files.length >= currentFilePosition - 1) {
+			files[currentFilePosition].delete();
+			getFileList();
+			if (files.length > 0) {
+				if (files.length > currentFilePosition) {
+					// show image with same position
+					managePreview(ImageSetMode.POSITION);
+				} else {
+					managePreview(ImageSetMode.LAST);
+				}
+			} else {
+				managePreview(ImageSetMode.LAST);
+			}
 		}
 	}
 
@@ -96,19 +137,76 @@ public class PhotoFragment extends Fragment implements OnClickListener {
 		return (TransactionType) getArguments().getSerializable(Extras.TRANSACTION_TYPE);
 	}
 
-	private void setImagePreview() {
-		File root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + "/" + getString(R.string.app_name));
-		File[] files = root.listFiles();
+	/**
+	 * Set last taken image to imageView
+	 */
+	private void managePreview(ImageSetMode mode) {
 		if (files.length > 0) {
-			currentFile = files[files.length - 1];
-			Bitmap bitmap = BitmapFactory.decodeFile(currentFile.getAbsolutePath());
-			iv_photo.setImageBitmap(bitmap);
+			switch (mode) {
+			case LAST:
+				currentFilePosition = 0;
+				break;
+
+			case LEFT:
+				currentFilePosition = currentFilePosition + 1;
+				break;
+
+			case RIGHT:
+				currentFilePosition = currentFilePosition - 1;
+				break;
+
+			case POSITION:
+				// currentFilePosition = currentFilePosition; //mean that current position stay the same
+				break;
+			default:
+				break;
+			}
+			setImage();
 		} else {
-			imb_remove.setEnabled(false);
+			iv_photo.setImageResource(android.R.color.transparent);
+		}
+		setButtonsVisibility();
+	}
+
+	/**
+	 * Sets image to imageView
+	 */
+	private void setImage() {
+		File currentFile = files[currentFilePosition];
+		Bitmap bitmap = BitmapFactory.decodeFile(currentFile.getAbsolutePath());
+		iv_photo.setImageBitmap(bitmap);
+	}
+
+	/**
+	 * Sets buttons visibility to allow user only correct movements
+	 */
+	private void setButtonsVisibility() {
+		// Button Remove
+		if (files.length > 0) {
+			imb_remove.setVisibility(View.VISIBLE);
+		} else {
+			imb_remove.setVisibility(View.INVISIBLE);
+		}
+
+		// Button Left
+		if (files.length > 1 && files.length > currentFilePosition + 1) {
+			imb_left.setVisibility(View.VISIBLE);
+		} else {
+			imb_left.setVisibility(View.INVISIBLE);
+		}
+
+		// Button Right
+		if (files.length > 1 && currentFilePosition > 0) {
+			imb_right.setVisibility(View.VISIBLE);
+		} else {
+			imb_right.setVisibility(View.INVISIBLE);
 		}
 	}
 
-	private CountDownTimer cameraCountDownTimer = new CountDownTimer(PERIOD, 0) {
+	/**
+	 * If TransactionType is TEMPRORAILY, after timer finished we go back to {@link CameraFragment}
+	 */
+	private CountDownTimer cameraCountDownTimer = new CountDownTimer(PERIOD, TICK) {
 
 		public void onTick(long millisUntilFinished) {
 		}
@@ -116,6 +214,5 @@ public class PhotoFragment extends Fragment implements OnClickListener {
 		public void onFinish() {
 			goToCameraFragment();
 		}
-	}.start();
-
+	};
 }
