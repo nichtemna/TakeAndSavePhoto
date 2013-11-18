@@ -52,7 +52,7 @@ public class CameraFragment extends Fragment implements OnClickListener {
 		CameraInfo cameraInfo = new CameraInfo();
 		for (int i = 0; i < numberOfCameras; i++) {
 			Camera.getCameraInfo(i, cameraInfo);
-			if (cameraInfo.facing == CameraInfo.CAMERA_FACING_BACK) {
+			if (cameraInfo.facing == CameraInfo.CAMERA_FACING_FRONT) {
 				defaultCameraId = i;
 			}
 		}
@@ -91,7 +91,7 @@ public class CameraFragment extends Fragment implements OnClickListener {
 	@Override
 	public void onResume() {
 		super.onResume();
-		mCamera = Camera.open(defaultCameraId);
+		mCamera = Camera.open();
 		mPreview.setCamera(mCamera);
 	}
 
