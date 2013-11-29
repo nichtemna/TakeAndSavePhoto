@@ -14,7 +14,7 @@ import java.util.Date;
  */
 public class ImageUtils {
     private static final int MEDIA_TYPE_IMAGE = 100;
-    private static final int IMAGE_MAX_SIZE = 400;
+    private static final int IMAGE_MAX_SIZE = 500;
     public static final String TAKE_AND_SAVE_PHOTO = "TakeAndSavePhoto";
 
     public static Bitmap rescaleBitmap(Bitmap bitmap) {
