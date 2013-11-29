@@ -18,6 +18,7 @@
 package com.nichtemna.takeandsavephoto;
 
 import java.io.File;
+import java.util.*;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -25,6 +26,9 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.support.v4.app.Fragment;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -35,201 +39,127 @@ import android.widget.ImageView;
 import com.nichtemna.takeandsavephoto.PhotoActivity.TransactionType;
 
 public class PhotoFragment extends Fragment implements OnClickListener {
-	public enum ImageSetMode {
-		LAST, LEFT, RIGHT, POSITION
-	}
+    public enum ImageSetMode {
+        LAST, LEFT, RIGHT, POSITION
+    }
 
-	private final static int PERIOD = 2000;
-	private final static int TICK = 1000;
+    private final static int PERIOD = 500;
+    private final static int TICK = 250;
 
-	private ImageButton imb_remove, imb_camera, imb_left, imb_right;
-	private ImageView iv_photo;
-	private int currentFilePosition = 0;
-	private File[] files;
+    private ImageButton imb_remove, imb_camera;
+    private ViewPager viewPager;
+    private PagerAdapter adapter;
+    private ArrayList<File> files = new ArrayList<File>();
 
-	public static PhotoFragment newInstance(TransactionType type) {
-		PhotoFragment frag = new PhotoFragment();
-		final Bundle args = new Bundle();
-		args.putSerializable(Extras.TRANSACTION_TYPE, type);
-		frag.setArguments(args);
-		return frag;
-	}
+    public static PhotoFragment newInstance(TransactionType type) {
+        PhotoFragment frag = new PhotoFragment();
+        final Bundle args = new Bundle();
+        args.putSerializable(Extras.TRANSACTION_TYPE, type);
+        frag.setArguments(args);
+        return frag;
+    }
 
-	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-		View view = inflater.inflate(R.layout.fragment_photo, container, false);
-		initViews(view);
-		setListeners();
-		return view;
-	}
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_photo, container, false);
+        initViews(view);
+        setListeners();
+        return view;
+    }
 
-	@Override
-	public void onActivityCreated(Bundle savedInstanceState) {
-		getFileList();
-		managePreview(ImageSetMode.LAST);
-		if (getTransactionType().equals(TransactionType.TEMPRORAILY)) {
-			cameraCountDownTimer.start();
-		}
-		super.onActivityCreated(savedInstanceState);
-	}
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
 
-	/**
-	 * Gets list of files in this folder
-	 */
-	private void getFileList() {
-		File root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + "/" + getString(R.string.app_name));
-		files = root.listFiles();
-	}
+        if (getTransactionType().equals(TransactionType.TEMPRORAILY)) {
+            cameraCountDownTimer.start();
+        }
 
-	private void initViews(View view) {
-		imb_remove = (ImageButton) view.findViewById(R.id.frag_photo_imb_remove_photo);
-		imb_camera = (ImageButton) view.findViewById(R.id.frag_photo_imb_camera);
-		imb_left = (ImageButton) view.findViewById(R.id.frag_photo_imb_left);
-		imb_right = (ImageButton) view.findViewById(R.id.frag_photo_imb_right);
-		iv_photo = (ImageView) view.findViewById(R.id.frag_photo_iv);
-	}
+        getFileList();
 
-	private void setListeners() {
-		imb_remove.setOnClickListener(this);
-		imb_camera.setOnClickListener(this);
-		imb_left.setOnClickListener(this);
-		imb_right.setOnClickListener(this);
-	}
 
-	@Override
-	public void onClick(View v) {
-		switch (v.getId()) {
-		case R.id.frag_photo_imb_remove_photo:
-			removeCurrentImage();
-			break;
+        super.onActivityCreated(savedInstanceState);
+    }
 
-		case R.id.frag_photo_imb_camera:
-			goToCameraFragment();
-			break;
+    public class CustomComparator implements Comparator<File> {
 
-		case R.id.frag_photo_imb_left:
-			managePreview(ImageSetMode.LEFT);
-			break;
+        @Override
+        public int compare(File file1, File file2) {
+            return (int) (file2.lastModified() - file1.lastModified());
+        }
+    }
 
-		case R.id.frag_photo_imb_right:
-			managePreview(ImageSetMode.RIGHT);
-			break;
+    private void initViews(View view) {
+        imb_remove = (ImageButton) view.findViewById(R.id.frag_photo_imb_remove_photo);
+        imb_camera = (ImageButton) view.findViewById(R.id.frag_photo_imb_camera);
+        viewPager = (ViewPager) view.findViewById(R.id.viewPager);
+    }
 
-		default:
-			break;
-		}
-		cameraCountDownTimer.cancel();
-	}
+    private void setListeners() {
+        imb_remove.setOnClickListener(this);
+        imb_camera.setOnClickListener(this);
+    }
 
-	/**
-	 * Switch fragment to photo preview
-	 */
-	private void goToCameraFragment() {
-		if (getActivity() instanceof FragmentToggler) {
-			((FragmentToggler) getActivity()).toggleFragments(TransactionType.PERMANENT);
-		}
-	}
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.frag_photo_imb_remove_photo:
+                removeCurrentImage();
+                break;
 
-	/**
-	 * Deletes current image form storage
-	 */
-	private void removeCurrentImage() {
-		if (files.length > 0 && files.length >= currentFilePosition - 1) {
-			files[currentFilePosition].delete();
-			getFileList();
-			if (files.length > 0) {
-				if (files.length > currentFilePosition) {
-					// show image with same position
-					managePreview(ImageSetMode.POSITION);
-				} else {
-					managePreview(ImageSetMode.LAST);
-				}
-			} else {
-				managePreview(ImageSetMode.LAST);
-			}
-		}
-	}
+            case R.id.frag_photo_imb_camera:
+                goToCameraFragment();
+                break;
+        }
+        cameraCountDownTimer.cancel();
+    }
 
-	private TransactionType getTransactionType() {
-		return (TransactionType) getArguments().getSerializable(Extras.TRANSACTION_TYPE);
-	}
+    /**
+     * Switch fragment to photo preview
+     */
+    private void goToCameraFragment() {
+        if (getActivity() instanceof FragmentToggler) {
+            ((FragmentToggler) getActivity()).toggleFragments(TransactionType.PERMANENT);
+        }
+    }
 
-	/**
-	 * Set last taken image to imageView
-	 */
-	private void managePreview(ImageSetMode mode) {
-		if (files.length > 0) {
-			switch (mode) {
-			case LAST:
-				currentFilePosition = 0;
-				break;
+    /**
+     * Deletes current image form storage
+     */
+    private void removeCurrentImage() {
+        int currentFilePosition = viewPager.getCurrentItem();
+        files.get(currentFilePosition).delete();
+        getFileList();
+        //  adapter.notifyDataSetChanged();
+    }
 
-			case LEFT:
-				currentFilePosition = currentFilePosition + 1;
-				break;
+    private TransactionType getTransactionType() {
+        return (TransactionType) getArguments().getSerializable(Extras.TRANSACTION_TYPE);
+    }
 
-			case RIGHT:
-				currentFilePosition = currentFilePosition - 1;
-				break;
+    /**
+     * If TransactionType is TEMPRORAILY, after timer finished we go back to {@link CameraFragment}
+     */
+    private CountDownTimer cameraCountDownTimer = new CountDownTimer(PERIOD, TICK) {
 
-			case POSITION:
-				// currentFilePosition = currentFilePosition; //mean that current position stay the same
-				break;
-			default:
-				break;
-			}
-			setImage();
-		} else {
-			iv_photo.setImageResource(android.R.color.transparent);
-		}
-		setButtonsVisibility();
-	}
+        public void onTick(long millisUntilFinished) {
+        }
 
-	/**
-	 * Sets image to imageView
-	 */
-	private void setImage() {
-		File currentFile = files[currentFilePosition];
-		Bitmap bitmap = BitmapFactory.decodeFile(currentFile.getAbsolutePath());
-		iv_photo.setImageBitmap(bitmap);
-	}
+        public void onFinish() {
+            goToCameraFragment();
+        }
+    };
 
-	/**
-	 * Sets buttons visibility to allow user only correct movements
-	 */
-	private void setButtonsVisibility() {
-		// Button Remove
-		if (files.length > 0) {
-			imb_remove.setVisibility(View.VISIBLE);
-		} else {
-			imb_remove.setVisibility(View.INVISIBLE);
-		}
+    /**
+     * Gets list of files in this folder
+     */
+    private void getFileList() {
+        files.clear();
+        File root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES + "/" + getString(R.string.app_name));
+        Collections.addAll(files, root.listFiles());
+        Collections.sort(files, new CustomComparator());
+        adapter = new ViewPagerAdapter(getActivity(), files);
+        viewPager.setAdapter(adapter);
 
-		// Button Left
-		if (files.length > 1 && files.length > currentFilePosition + 1) {
-			imb_left.setVisibility(View.VISIBLE);
-		} else {
-			imb_left.setVisibility(View.INVISIBLE);
-		}
-
-		// Button Right
-		if (files.length > 1 && currentFilePosition > 0) {
-			imb_right.setVisibility(View.VISIBLE);
-		} else {
-			imb_right.setVisibility(View.INVISIBLE);
-		}
-	}
-
-	/**
-	 * If TransactionType is TEMPRORAILY, after timer finished we go back to {@link CameraFragment}
-	 */
-	private CountDownTimer cameraCountDownTimer = new CountDownTimer(PERIOD, TICK) {
-
-		public void onTick(long millisUntilFinished) {
-		}
-
-		public void onFinish() {
-			goToCameraFragment();
-		}
-	};
+        imb_remove.setVisibility(files.size() > 0 ? View.VISIBLE : View.INVISIBLE);
+    }
 }
